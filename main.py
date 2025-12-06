@@ -29,9 +29,11 @@ ARREST_REQUIRED_ROLE_ID = 1380992005089263717
 ARREST_CHANNEL_ID = 1444676107768041574
 
 # Most Wanted system
-MOST_WANTED_REQUEST_ROLE_ID = 1380992005089263717   # can run /most-wanted
-MOST_WANTED_APPROVER_ROLE_ID = 1213814988251070525  # can approve/deny
-MOST_WANTED_CHANNEL_ID = 1444790097873735830        # target channel for requests
+MOST_WANTED_REQUEST_ROLE_ID = 1380992005089263717
+MOST_WANTED_APPROVER_ROLE_ID = 1213814988251070525
+MOST_WANTED_CHANNEL_ID = 1444790097873735830
+
+
 
 
 # ================== HELPERS ==================
@@ -1027,6 +1029,182 @@ async def arrest_log(
         ephemeral=True,
     )
 
+import os
+import discord
+from discord.ext import commands
+from discord import app_commands
+
+# =========================
+# CONFIG – IDs YOU GAVE ME
+# =========================
+
+# Role that can run /most-wanted
+MOST_WANTED_REQUEST_ROLE_ID = 1380992005089263717
+
+# Role that can click Approve / Deny buttons
+MOST_WANTED_APPROVER_ROLE_ID = 1213814988251070525
+
+# Channel where the most wanted requests are sent
+MOST_WANTED_CHANNEL_ID = 1444790097873735830
+
+
+# =========================
+# HELPER FUNCTIONS
+# =========================
+
+def has_role_or_admin(member: discord.Member, role_id: int) -> bool:
+    """Return True if member has the given role OR is an admin."""
+    if member.guild_permissions.administrator:
+        return True
+    return any(role.id == role_id for role in member.roles)
+
+
+# =========================
+# VIEW – APPROVE / DENY BUTTONS
+# =========================
+
+class MostWantedView(discord.ui.View):
+    def __init__(self):
+        # timeout=None so buttons keep working after restart
+        super().__init__(timeout=None)
+
+    async def _button_permission_check(self, interaction: discord.Interaction) -> bool:
+        """Only allow approver role or admins to use the buttons."""
+        member = interaction.user
+
+        if not isinstance(member, discord.Member):
+            await interaction.response.send_message(
+                "Could not verify your roles.",
+                ephemeral=True,
+            )
+            return False
+
+        # Admin bypass
+        if member.guild_permissions.administrator:
+            return True
+
+        # Must have the approver role
+        has_approver_role = any(
+            role.id == MOST_WANTED_APPROVER_ROLE_ID for role in member.roles
+        )
+        if not has_approver_role:
+            await interaction.response.send_message(
+                "You do not have permission to approve or deny most wanted requests.",
+                ephemeral=True,
+            )
+            return False
+
+        return True
+
+    def _disable_buttons(self):
+        """Disable all buttons once a decision is made."""
+        for item in self.children:
+            item.disabled = True
+
+    @discord.ui.button(
+        label="Approve",
+        style=discord.ButtonStyle.success,
+        custom_id="most_wanted_approve",
+    )
+    async def approve_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        if not await self._button_permission_check(interaction):
+            return
+
+        if not interaction.message.embeds:
+            await interaction.response.send_message(
+                "No embed found to update.",
+                ephemeral=True,
+            )
+            return
+
+        embed = interaction.message.embeds[0].copy()
+        embed.color = discord.Color.green()
+        embed.set_author(
+            name=f"Most Wanted Approved by {interaction.user.display_name}"
+        )
+
+        self._disable_buttons()
+        await interaction.message.edit(embed=embed, view=self)
+
+        await interaction.response.send_message(
+            "Most wanted request approved.",
+            ephemeral=True,
+        )
+
+    @discord.ui.button(
+        label="Deny",
+        style=discord.ButtonStyle.danger,
+        custom_id="most_wanted_deny",
+    )
+    async def deny_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ):
+        if not await self._button_permission_check(interaction):
+            return
+
+        if not interaction.message.embeds:
+            await interaction.response.send_message(
+                "No embed found to update.",
+                ephemeral=True,
+            )
+            return
+
+        embed = interaction.message.embeds[0].copy()
+        embed.color = discord.Color.red()
+        embed.set_author(
+            name=f"Most Wanted Denied by {interaction.user.display_name}"
+        )
+
+        self._disable_buttons()
+        await interaction.message.edit(embed=embed, view=self)
+
+        await interaction.response.send_message(
+            "Most wanted request denied.",
+            ephemeral=True,
+        )
+
+
+# =========================
+# BOT SETUP
+# =========================
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+
+class ManagementBot(commands.Bot):
+    def __init__(self):
+        super().__init__(
+            command_prefix="!",  # prefix not used much since we use slash commands
+            intents=intents,
+        )
+
+    async def setup_hook(self):
+        # Register persistent views so buttons keep working after restart
+        self.add_view(MostWantedView())
+
+        # Sync slash commands to all guilds globally
+        await self.tree.sync()
+        print("Slash commands synced.")
+
+    async def on_ready(self):
+        print(f"Logged in as {self.user} (SLCWL Management)")
+
+
+bot = ManagementBot()
+
+
+# =========================
+# /most-wanted COMMAND
+# =========================
+
 @bot.tree.command(
     name="most-wanted",
     description="Request a most wanted warrant on a user.",
@@ -1040,6 +1218,7 @@ async def most_wanted(
     roblox_username: str,
     reason: str,
 ):
+    # Must be in a guild
     if interaction.guild is None:
         await interaction.response.send_message(
             "This command must be used in a server.",
@@ -1055,7 +1234,7 @@ async def most_wanted(
         )
         return
 
-    # Permission check: request role or admin
+    # Permission: request role or admin
     if not has_role_or_admin(member, MOST_WANTED_REQUEST_ROLE_ID):
         await interaction.response.send_message(
             "You do not have permission to use this command.",
@@ -1063,6 +1242,7 @@ async def most_wanted(
         )
         return
 
+    # Get the target channel
     channel = interaction.guild.get_channel(MOST_WANTED_CHANNEL_ID)
     if channel is None:
         await interaction.response.send_message(
@@ -1071,6 +1251,7 @@ async def most_wanted(
         )
         return
 
+    # Build the embed
     embed = discord.Embed(
         description=(
             f"**User Requested:** {member.mention}\n"
@@ -1083,27 +1264,36 @@ async def most_wanted(
 
     view = MostWantedView()
 
-    # Send the main message with buttons
+    # Send main message with buttons
     message = await channel.send(embed=embed, view=view)
 
-    # Put an ID in the footer
+    # Add ID footer
     embed.set_footer(text=f"Most Wanted ID: {message.id}")
     await message.edit(embed=embed)
 
-    # Create a thread attached to this message
+    # Create a thread on the message
     thread_name = f"Most Wanted: {roblox_username}"
     thread = await message.create_thread(name=thread_name)
 
-    # Ping the requester in the thread
+    # Ping requester in the thread
     await thread.send(f"{member.mention} Discuss this request here.")
 
-    # Acknowledge to the command user (ephemeral)
+    # Acknowledge to the user (ephemeral)
     await interaction.response.send_message(
         f"Most wanted request created in {channel.mention}.",
         ephemeral=True,
     )
 
 
+# =========================
+# RUN BOT (Railway-safe)
+# =========================
+
+if __name__ == "__main__":
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        raise RuntimeError("BOT_TOKEN environment variable not set")
+    bot.run(token)
 
 
 # ================== RUN BOT ==================
@@ -1115,6 +1305,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

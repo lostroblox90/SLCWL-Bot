@@ -1021,6 +1021,83 @@ async def arrest_log(
         ephemeral=True,
     )
 
+@bot.tree.command(
+    name="most-wanted",
+    description="Request a most wanted warrant on a user.",
+)
+@app_commands.describe(
+    roblox_username="Suspect's Roblox username",
+    reason="Reason for requesting most wanted status",
+)
+async def most_wanted(
+    interaction: discord.Interaction,
+    roblox_username: str,
+    reason: str,
+):
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command must be used in a server.",
+            ephemeral=True,
+        )
+        return
+
+    member = interaction.user
+    if not isinstance(member, discord.Member):
+        await interaction.response.send_message(
+            "Could not verify your roles.",
+            ephemeral=True,
+        )
+        return
+
+    # Permission check: request role or admin
+    if not has_role_or_admin(member, MOST_WANTED_REQUEST_ROLE_ID):
+        await interaction.response.send_message(
+            "You do not have permission to use this command.",
+            ephemeral=True,
+        )
+        return
+
+    channel = interaction.guild.get_channel(MOST_WANTED_CHANNEL_ID)
+    if channel is None:
+        await interaction.response.send_message(
+            "Could not find the most wanted request channel.",
+            ephemeral=True,
+        )
+        return
+
+    embed = discord.Embed(
+        description=(
+            f"**User Requested:** {member.mention}\n"
+            f"**Suspect's Roblox Username:** {roblox_username}\n"
+            f"**Reason:** {reason}"
+        ),
+        color=discord.Color.blurple(),
+    )
+    embed.set_author(name="Most Wanted Pending")
+
+    view = MostWantedView()
+
+    # Send the main message with buttons
+    message = await channel.send(embed=embed, view=view)
+
+    # Put an ID in the footer
+    embed.set_footer(text=f"Most Wanted ID: {message.id}")
+    await message.edit(embed=embed)
+
+    # Create a thread attached to this message
+    thread_name = f"Most Wanted: {roblox_username}"
+    thread = await message.create_thread(name=thread_name)
+
+    # Ping the requester in the thread
+    await thread.send(f"{member.mention} Discuss this request here.")
+
+    # Acknowledge to the command user (ephemeral)
+    await interaction.response.send_message(
+        f"Most wanted request created in {channel.mention}.",
+        ephemeral=True,
+    )
+
+
 
 # ================== RUN BOT ==================
 
@@ -1031,5 +1108,6 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 

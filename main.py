@@ -28,6 +28,12 @@ CITATION_CHANNEL_ID = 1444675977706868879
 ARREST_REQUIRED_ROLE_ID = 1380992005089263717
 ARREST_CHANNEL_ID = 1444676107768041574
 
+# Most Wanted system
+MOST_WANTED_REQUEST_ROLE_ID = 1380992005089263717   # can run /most-wanted
+MOST_WANTED_APPROVER_ROLE_ID = 1213814988251070525  # can approve/deny
+MOST_WANTED_CHANNEL_ID = 1444790097873735830        # target channel for requests
+
+
 # ================== HELPERS ==================
 
 
@@ -1099,6 +1105,7 @@ async def most_wanted(
 
 
 
+
 # ================== RUN BOT ==================
 
 import os
@@ -1108,6 +1115,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

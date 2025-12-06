@@ -547,7 +547,6 @@ async def ssd(interaction: discord.Interaction):
         description=(
             "Our whitelisted server has now shut down. Thank you to those who joined. You will be notified here when our next session occurs.\n"
             "\n"
-==
             "We appreciate those who joined. See you in the next session."
         ),
         color=0x242428,
@@ -1221,3 +1220,4 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+

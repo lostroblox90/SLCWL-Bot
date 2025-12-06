@@ -26,7 +26,7 @@ CITATION_CHANNEL_ID = 1444675977706868879
 
 # Arrest
 ARREST_REQUIRED_ROLE_ID = 1380992005089263717
-ARREST_CHANNEL_ID = 1444675977706868879
+ARREST_CHANNEL_ID = 1444676107768041574
 
 # ================== HELPERS ==================
 
@@ -498,7 +498,7 @@ async def warrant(
 
     embed = discord.Embed(
         description=(
-            f"**Deputy Requested:** {member.mention}\n"
+            f"**User Requested:** {member.mention}\n"
             f"**Suspect's Username:** {suspect_username}\n"
             f"**Charges:** {charges}"
         ),
@@ -1031,4 +1031,5 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 

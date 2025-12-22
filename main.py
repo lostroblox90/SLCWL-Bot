@@ -1113,7 +1113,7 @@ async def ssu_vote(interaction: discord.Interaction, session_time: str):
         )
         return
 
-    channel = interaction.channel
+    channel = interaction.guild.get_channel(SSU_SSD_TARGET_CHANNEL_ID)
     if channel is None:
         await interaction.response.send_message(
             "Could not determine the channel.",
@@ -1135,8 +1135,10 @@ async def ssu_vote(interaction: discord.Interaction, session_time: str):
     embed.add_field(name="Session Time", value=session_time, inline=False)
 
     message = await channel.send(
+        content="@everyone",
         embed=embed,
         view=SSUVoteView(),
+        allowed_mentions=discord.AllowedMentions(everyone=True),
     )
 
 
@@ -1158,6 +1160,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

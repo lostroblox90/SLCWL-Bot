@@ -1001,8 +1001,9 @@ async def arrest_log(
         inline=False,
     )
     embed.add_field(
-        name="Charges", value=charges, inline=False
-    )
+    name="Charges", value=charges, inline=False
+)
+
     embed.add_field(
         name="Arresting Officer", value=member.mention, inline=False
     )
@@ -1022,8 +1023,8 @@ async def arrest_log(
 SSUVOTE_REQUIRED_ROLE_IDS = {
     1207461773532471407,
     1054172988318158949,
-
 }
+
 
 class SSUVoteView(discord.ui.View):
     def __init__(self):
@@ -1035,89 +1036,64 @@ class SSUVoteView(discord.ui.View):
             1054172988318158949,
         }
 
-    # ✅ ATTEND / UNATTEND BUTTON
-    @discord.ui.button(
-        label="Attend Session",
-        style=discord.ButtonStyle.success
-    )
-    async def attend_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+    @discord.ui.button(label="Attend Session", style=discord.ButtonStyle.success)
+    async def attend_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
 
         if user_id in self.attendees:
             self.attendees.remove(user_id)
             await interaction.response.send_message(
                 "<:whitecheck:1191923481928028200> Sucessfully unmarked your attendance.",
-                ephemeral=True
+                ephemeral=True,
             )
         else:
             self.attendees.add(user_id)
             await interaction.response.send_message(
                 "<:whitecheck:1191923481928028200> Successfully marked your attendance..",
-                ephemeral=True
+                ephemeral=True,
             )
 
-    # ⬜ VIEW ATTENDEES BUTTON
-    @discord.ui.button(
-        label="View Attendees",
-        style=discord.ButtonStyle.secondary
-    )
-    async def view_attendees_button(
-        self,
-        interaction: discord.Interaction,
-        button: discord.ui.Button
-    ):
+    @discord.ui.button(label="View Attendees", style=discord.ButtonStyle.secondary)
+    async def view_attendees_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_role_ids = {role.id for role in interaction.user.roles}
 
         if not user_role_ids & self.view_allowed_roles:
             await interaction.response.send_message(
                 "You do not have permission to view attendees.",
-                ephemeral=True
+                ephemeral=True,
             )
             return
 
         if not self.attendees:
             await interaction.response.send_message(
                 "No one has marked attendance yet.",
-                ephemeral=True
+                ephemeral=True,
             )
             return
 
-        mentions = []
-        for user_id in self.attendees:
-            mentions.append(f"<@{user_id}>")
-
-        attendee_list = "\n".join(mentions)
+        attendee_list = "\n".join(f"<@{uid}>" for uid in self.attendees)
 
         await interaction.response.send_message(
             f"**Attendees ({len(self.attendees)}):**\n{attendee_list}",
-            ephemeral=True
+            ephemeral=True,
         )
 
 
 @bot.tree.command(
-    name = "ssu_vote",
-    description = "Start a session vote.".
-
+    name="ssu_vote",
+    description="Start a session vote.",
 )
 @app_commands.describe(
-    session_time="Enter the time using a timestamp generator."
-
+    session_time="Enter the time using a timestamp generator.",
 )
-async def ssu_vote(
-    interaction: discord.Interaction, session_time: str,
-
-):
+async def ssu_vote(interaction: discord.Interaction, session_time: str):
     if interaction.guild is None:
         await interaction.response.send_message(
             "This command can only be used in a server.",
             ephemeral=True,
-
         )
         return
+
     member = interaction.user
     if not isinstance(member, discord.Member):
         await interaction.response.send_message(
@@ -1126,29 +1102,46 @@ async def ssu_vote(
         )
         return
 
-    if not has_role_or_admin(member, SSUVOTE_REQUIRED_ROLE_IDS):
+    # FIXED ROLE CHECK (set-aware)
+    if not (
+        member.guild_permissions.administrator
+        or any(role.id in SSUVOTE_REQUIRED_ROLE_IDS for role in member.roles)
+    ):
         await interaction.response.send_message(
             "You do not have permission to use this command.",
             ephemeral=True,
         )
         return
 
-embed = discord.Embed(
-    title="Session Vote",
-    description=(
-        "A session vote is being held. The time for the session is listed below. If you plan to attend, please use the green button listed below to mark your attendance. If you fail to join the session within **15** minutes of it starting after voting, you will be moderated.")
-    color=0x232428
+    channel = interaction.channel
+    if channel is None:
+        await interaction.response.send_message(
+            "Could not determine the channel.",
+            ephemeral=True,
+        )
+        return
 
+    embed = discord.Embed(
+        title="Session Vote",
+        description=(
+            "A session vote is being held. The time for the session is listed below. "
+            "If you plan to attend, please use the green button listed below to mark your attendance. "
+            "If you fail to join the session within **15** minutes of it starting after voting, "
+            "you will be moderated."
+        ),
+        color=0x232428,
     )
-    embed.add_field(name=Session Time, vlaue=session_time, inline=False)
+
+    embed.add_field(name="Session Time", value=session_time, inline=False)
 
     message = await channel.send(
-    embed=embed,
-    view=SSUVoteView()
-)
+        embed=embed,
+        view=SSUVoteView(),
+    )
 
 
-    embed.set_footer(text=f"Arrest ID: {message.id}")
+
+    embed.set_footer(text=f"SLCWL Session Vote")
     await message.edit(embed=embed)
 
     await interaction.response.send_message(
@@ -1165,4 +1158,5 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 

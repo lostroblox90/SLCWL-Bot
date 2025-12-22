@@ -1000,7 +1000,9 @@ async def arrest_log(
         value=suspect_username,
         inline=False,
     )
-    embed.add_field(name="Charges", value=charges, inline=False)
+    embed.add_field(
+        name="Charges", value=charges, inline=False
+    )
     embed.add_field(
         name="Arresting Officer", value=member.mention, inline=False
     )
@@ -1163,3 +1165,4 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+

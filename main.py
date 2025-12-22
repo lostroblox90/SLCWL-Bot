@@ -1049,7 +1049,7 @@ class SSUVoteView(discord.ui.View):
         else:
             self.attendees.add(user_id)
             await interaction.response.send_message(
-                "<:check:1216610603783819314> Successfully marked your attendance..",
+                "<:check:1216610603783819314> Successfully marked your attendance.",
                 ephemeral=True,
             )
 
@@ -1158,6 +1158,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

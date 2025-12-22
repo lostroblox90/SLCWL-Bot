@@ -1036,20 +1036,20 @@ class SSUVoteView(discord.ui.View):
             1054172988318158949,
         }
 
-    @discord.ui.button(label="Attend Session", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="Mark Attendance", style=discord.ButtonStyle.success)
     async def attend_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
 
         if user_id in self.attendees:
             self.attendees.remove(user_id)
             await interaction.response.send_message(
-                "<:whitecheck:1191923481928028200> Sucessfully unmarked your attendance.",
+                "<:check:1216610603783819314> Sucessfully unmarked your attendance.",
                 ephemeral=True,
             )
         else:
             self.attendees.add(user_id)
             await interaction.response.send_message(
-                "<:whitecheck:1191923481928028200> Successfully marked your attendance..",
+                "<:check:1216610603783819314> Successfully marked your attendance..",
                 ephemeral=True,
             )
 
@@ -1158,5 +1158,6 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 

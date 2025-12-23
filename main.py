@@ -1,14 +1,90 @@
 import discord
 from discord import app_commands
-
 import aiohttp
-import asyncio
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+
+# ================= CONFIG =================
+
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+ERLC_API_KEY = os.getenv("ERLC_API_KEY")
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+
+API_URL = "https://api.policeroleplay.community/v1/server/players"
+CHECK_INTERVAL = 20  # seconds
+
+# ================= BOT =================
+
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+
+last_players = None
+
+# ================= READY =================
+
+@client.event
+async def on_ready():
+    print(f"Logged in as {client.user}")
+    await initialize_players()
+    poll_players.start()
+
+# ================= API =================
+
+async def fetch_players():
+    headers = {
+        "Authorization": f"Bearer {ERLC_API_KEY}"
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(API_URL, headers=headers) as resp:
+            if resp.status != 200:
+                print("ERLC API ERROR:", resp.status)
+                return set()
+
+            data = await resp.json()
+            return set(p["Username"] for p in data)
+
+async def initialize_players():
+    global last_players
+    last_players = await fetch_players()
+    print(f"Baseline set with {len(last_players)} players")
+
+# ================= LOOP =================
+
+@tasks.loop(seconds=CHECK_INTERVAL)
+async def poll_players():
+    global last_players
+
+    current_players = await fetch_players()
+    if last_players is None:
+        last_players = current_players
+        return
+
+    joined = current_players - last_players
+    left = last_players - current_players
+
+    channel = client.get_channel(LOG_CHANNEL_ID)
+
+    for player in joined:
+        embed = discord.Embed(
+            title="Player Joined",
+            description=f"**{player}** has joined the server",
+            color=0x2ECC71
+        )
+        await channel.send(embed=embed)
+
+    for player in left:
+        embed = discord.Embed(
+            title="Player Left",
+            description=f"**{player}** has left the server",
+            color=0xE74C3C
+        )
+        await channel.send(embed=embed)
+
+    last_players = current_players
 # ================== ID CONFIG ==================
-
-ERLC_LOG_CHANNEL_ID = 1218926472945995877
-ERLC_API_BASE = "https://api.policeroleplay.community/v1"
-
 
 # SSU / SSD
 SSU_REQUIRED_ROLE_ID = 1054172988318158949
@@ -33,7 +109,7 @@ CITATION_CHANNEL_ID = 1444675977706868879
 
 # Arrest
 ARREST_REQUIRED_ROLE_ID = 1380992005089263717
-ARREST_CHANNEL_ID = 1444675977706868879
+ARREST_CHANNEL_ID = 1444676107768041574
 
 # ================== HELPERS ==================
 
@@ -374,7 +450,7 @@ async def ssu(interaction: discord.Interaction):
             "Our whitelisted server has now started up. We highly recommend you review our "
             "<#1213248186513363004> prior to joining.\n"
             "\n"
-            "**Server Name:** Salt Lake City Whitelisted"
+            "**Server Name:** Salt Lake City Whitelisted\n"
             "**Code:** slcwl\n"
             "\n"
             "If you have voted, you have **15 minutes** to join or you will face moderation actions. "
@@ -385,7 +461,7 @@ async def ssu(interaction: discord.Interaction):
     )
 
     embed.set_image(
-        url="https://media.discordapp.net/attachments/1054189485308518541/1445323712789217352/image.png"
+        url="https://media.discordapp.net/attachments/1213251495038951505/1302714930742431784/Screenshot_528-superbloomed.png?ex=69352b92&is=6933da12&hm=85fa0f6a2f2e4e4a95fde9289fb08bedd34e779ade17b2afe8df0b5a2880c87d&=&format=webp&quality=lossless&width=550&height=235"
     )
     embed.set_footer(text="Salt Lake City Whitelisted")
 
@@ -436,21 +512,15 @@ async def ssd(interaction: discord.Interaction):
     embed = discord.Embed(
         title="Server Shut Down",
         description=(
-            "Our whitelisted server has now concluded operations. We highly recommend you review our "
-            "<#1213248186513363004> for future updates.\n"
+            "Our whitelisted server has now shut down. Thank you for joining. We hope you enjoyed our session.\n"
             "\n"
-            "**Server Name:** Salt Lake City Whitelisted"
-            "**Code:** slcwl\n"
-            "\n"
-            "We appreciate everyone who participated in today's session. To continue playing future SSUs, "
-            "make sure you remain in our Roblox group found "
-            "[here](https://www.roblox.com/groups/34003840/Salt-Lake-Whitelisted#!/about)."
+            "Ensure to stay on the lookout for future whitelisted sessions."
         ),
         color=0x2B2D31,
     )
 
     embed.set_image(
-        url="https://media.discordapp.net/attachments/1054189485308518541/1445323712789217352/image.png"
+        url="https://media.discordapp.net/attachments/1213251495038951505/1302714930742431784/Screenshot_528-superbloomed.png?ex=69352b92&is=6933da12&hm=85fa0f6a2f2e4e4a95fde9289fb08bedd34e779ade17b2afe8df0b5a2880c87d&=&format=webp&quality=lossless&width=550&height=235"
     )
     embed.set_footer(text="Salt Lake City Whitelisted")
 
@@ -505,7 +575,7 @@ async def warrant(
 
     embed = discord.Embed(
         description=(
-            f"**Deputy Requested:** {member.mention}\n"
+            f"**User Requested:** {member.mention}\n"
             f"**Suspect's Username:** {suspect_username}\n"
             f"**Charges:** {charges}"
         ),
@@ -1013,7 +1083,8 @@ async def arrest_log(
         value=suspect_username,
         inline=False,
     )
-    embed.add_field(name="Charges", value=charges, inline=False)
+    embed.add_field(
+        name="Charges", value=charges, inline=False)
     embed.add_field(
         name="Arresting Officer", value=member.mention, inline=False
     )
@@ -1028,68 +1099,144 @@ async def arrest_log(
         ephemeral=True,
     )
 
-## GAME JOIN LOGS
+# Session Vote Thing
 
-async def erlc_player_logger(bot: discord.Client):
-    await bot.wait_until_ready()
+SSUVOTE_REQUIRED_ROLE_IDS = {
+    1207461773532471407,
+    1054172988318158949,
 
-    api_key = os.getenv("ERLC_API_KEY")
-    server_code = os.getenv("ERLC_SERVER_CODE")
+}
 
-    if not api_key or not server_code:
-        print("ERLC API key or server code missing.")
+class SSUVoteView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.attendees: set[int] = set()
+
+        self.view_allowed_roles = {
+            1207461773532471407,
+            1054172988318158949,
+        }
+
+    # ✅ ATTEND / UNATTEND BUTTON
+    @discord.ui.button(
+        label="Attend Session",
+        style=discord.ButtonStyle.success
+    )
+    async def attend_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        user_id = interaction.user.id
+
+        if user_id in self.attendees:
+            self.attendees.remove(user_id)
+            await interaction.response.send_message(
+                "<:whitecheck:1191923481928028200> Sucessfully unmarked your attendance.",
+                ephemeral=True
+            )
+        else:
+            self.attendees.add(user_id)
+            await interaction.response.send_message(
+                "<:whitecheck:1191923481928028200> Successfully marked your attendance..",
+                ephemeral=True
+            )
+
+    # ⬜ VIEW ATTENDEES BUTTON
+    @discord.ui.button(
+        label="View Attendees",
+        style=discord.ButtonStyle.secondary
+    )
+    async def view_attendees_button(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        user_role_ids = {role.id for role in interaction.user.roles}
+
+        if not user_role_ids & self.view_allowed_roles:
+            await interaction.response.send_message(
+                "You do not have permission to view attendees.",
+                ephemeral=True
+            )
+            return
+
+        if not self.attendees:
+            await interaction.response.send_message(
+                "No one has marked attendance yet.",
+                ephemeral=True
+            )
+            return
+
+        mentions = []
+        for user_id in self.attendees:
+            mentions.append(f"<@{user_id}>")
+
+        attendee_list = "\n".join(mentions)
+
+        await interaction.response.send_message(
+            f"**Attendees ({len(self.attendees)}):**\n{attendee_list}",
+            ephemeral=True
+        )
+
+
+@bot.tree.command(
+    name = "ssu_vote",
+    description = "Start a session vote.".
+
+)
+@app_commands.describe(
+    session_time="Enter the time using a timestamp generator."
+
+)
+async def ssu_vote(
+    interaction: discord.Interaction, session_time: str,
+
+):
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a server.",
+            ephemeral=True,
+
+        )
+        return
+    member = interaction.user
+    if not isinstance(member, discord.Member):
+        await interaction.response.send_message(
+            "Could not verify your roles.",
+            ephemeral=True,
+        )
         return
 
-    headers = {
-        "Authorization": api_key,
-        "Content-Type": "application/json",
-    }
+    if not has_role_or_admin(member, SSUVOTE_REQUIRED_ROLE_IDS):
+        await interaction.response.send_message(
+            "You do not have permission to use this command.",
+            ephemeral=True,
+        )
+        return
 
-    previous_players = set()
+embed = discord.Embed(
+    title="Session Vote",
+    description=(
+        "A session vote is being held. The time for the session is listed below. If you plan to attend, please use the green button listed below to mark your attendance. If you fail to join the session within **15** minutes of it starting after voting, you will be moderated.")
+    color=0x232428
 
-    async with aiohttp.ClientSession(headers=headers) as session:
-        while not bot.is_closed():
-            try:
-                async with session.get(
-                    f"{ERLC_API_BASE}/servers/{server_code}"
-                ) as resp:
-                    if resp.status != 200:
-                        await asyncio.sleep(15)
-                        continue
+    )
+    embed.add_field(name=Session Time, vlaue=session_time, inline=False)
 
-                    data = await resp.json()
-                    current_players = set(data.get("Players", []))
-
-                joined = current_players - previous_players
-                left = previous_players - current_players
-
-                channel = bot.get_channel(ERLC_LOG_CHANNEL_ID)
-
-                if channel:
-                    for player in joined:
-                        embed = discord.Embed(
-                            title="Player Joined",
-                            description=f"**{player}** has joined the server",
-                            color=discord.Color.green(),
-                        )
-                        await channel.send(embed=embed)
-
-                    for player in left:
-                        embed = discord.Embed(
-                            title="Player Left",
-                            description=f"**{player}** has left the server",
-                            color=discord.Color.red(),
-                        )
-                        await channel.send(embed=embed)
-
-                previous_players = current_players
-                await asyncio.sleep(15)
-
-            except Exception as e:
-                print(f"ERLC logger error: {e}")
-                await asyncio.sleep(15)
+    message = await channel.send(
+    embed=embed,
+    view=SSUVoteView()
+)
 
 
+    embed.set_footer(text=f"Arrest ID: {message.id}")
+    await message.edit(embed=embed)
+
+    await interaction.response.send_message(
+        f"Successfully ran the session vote command.",
+        ephemeral=True,
+    )
 
 # ================== RUN BOT ==================
 
@@ -1100,4 +1247,5 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 

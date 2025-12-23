@@ -1143,6 +1143,12 @@ class SSUVoteView(discord.ui.View):
             )
 
     # ⬜ VIEW ATTENDEES BUTTON
+class AttendanceView(discord.ui.View):
+    def __init__(self, view_allowed_roles: set):
+        super().__init__(timeout=None)
+        self.view_allowed_roles = view_allowed_roles
+        self.attendees = set()
+
     @discord.ui.button(
         label="View Attendees",
         style=discord.ButtonStyle.secondary
@@ -1168,16 +1174,14 @@ class SSUVoteView(discord.ui.View):
             )
             return
 
-        mentions = []
-        for user_id in self.attendees:
-            mentions.append(f"<@{user_id}>")
-
+        mentions = [f"<@{uid}>" for uid in self.attendees]
         attendee_list = "\n".join(mentions)
 
         await interaction.response.send_message(
             f"**Attendees ({len(self.attendees)}):**\n{attendee_list}",
             ephemeral=True
         )
+
 
 
 @bot.tree.command(
@@ -1247,5 +1251,6 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 

@@ -1088,7 +1088,6 @@ async def arrest_log(
     embed.add_field(
         name="Arresting Officer", value=member.mention, inline=False
     )
-
     message = await channel.send(embed=embed)
 
     embed.set_footer(text=f"Arrest ID: {message.id}")
@@ -1251,6 +1250,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

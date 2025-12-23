@@ -9,10 +9,12 @@ import os
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 ERLC_API_KEY = os.getenv("ERLC_API_KEY")
-LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 
-API_URL = "https://api.policeroleplay.community/v1/server/players"
-CHECK_INTERVAL = 20
+_log_channel = os.getenv("LOG_CHANNEL_ID")
+if not _log_channel:
+    raise RuntimeError("LOG_CHANNEL_ID not set")
+
+LOG_CHANNEL_ID = int(_log_channel)
 
 # ================= ID CONFIG =================
 
@@ -247,6 +249,7 @@ if __name__ == "__main__":
     if not DISCORD_TOKEN:
         raise RuntimeError("DISCORD_TOKEN not set")
     bot.run(DISCORD_TOKEN)
+
 
 
 

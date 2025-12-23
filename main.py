@@ -1109,7 +1109,8 @@ SSUVOTE_REQUIRED_ROLE_IDS = {
 class SSUVoteView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.attendees: set[int] = set()
+        self.attendees = set()
+
 
         self.view_allowed_roles = {
             1207461773532471407,
@@ -1250,6 +1251,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

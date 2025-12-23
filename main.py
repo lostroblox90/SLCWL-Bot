@@ -1144,9 +1144,9 @@ class SSUVoteView(discord.ui.View):
 
     # ⬜ VIEW ATTENDEES BUTTON
 class AttendanceView(discord.ui.View):
-    def __init__(self, view_allowed_roles: set):
+    def __init__(self, allowed_roles: set[int]):
         super().__init__(timeout=None)
-        self.view_allowed_roles = view_allowed_roles
+        self.allowed_roles = allowed_roles
         self.attendees = set()
 
     @discord.ui.button(
@@ -1160,7 +1160,7 @@ class AttendanceView(discord.ui.View):
     ):
         user_role_ids = {role.id for role in interaction.user.roles}
 
-        if not user_role_ids & self.view_allowed_roles:
+        if not user_role_ids & self.allowed_roles:
             await interaction.response.send_message(
                 "You do not have permission to view attendees.",
                 ephemeral=True
@@ -1181,7 +1181,6 @@ class AttendanceView(discord.ui.View):
             f"**Attendees ({len(self.attendees)}):**\n{attendee_list}",
             ephemeral=True
         )
-
 
 
 @bot.tree.command(
@@ -1251,6 +1250,7 @@ if __name__ == "__main__":
     if not token:
         raise RuntimeError("BOT_TOKEN environment variable not set")
     bot.run(token)
+
 
 
 

@@ -248,12 +248,100 @@ async def ssu_vote(
         ephemeral=True,
     )
 
+# FETCH RFACTIONS COMMAND
+FETCH_REACTIONS_REQUIRED_ROLE_ID = 1207461773532471407
+
+
+@bot.tree.command(
+    name="fetch_reactions",
+    description="Fetch users who reacted to a message and mention them.",
+)
+@app_commands.describe(
+    message_id="The ID of the message to fetch reactions from",
+    emoji="The emoji reaction to check (✅ or <:name:id>)",
+)
+async def fetch_reactions(
+    interaction: discord.Interaction,
+    message_id: str,
+    emoji: str,
+):
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a server.",
+            ephemeral=True,
+        )
+        return
+
+    member = interaction.user
+    if not isinstance(member, discord.Member):
+        await interaction.response.send_message(
+            "Could not verify your roles.",
+            ephemeral=True,
+        )
+        return
+
+    # Role OR admin check
+    if not (
+        member.guild_permissions.administrator
+        or any(role.id == FETCH_REACTIONS_REQUIRED_ROLE_ID for role in member.roles)
+    ):
+        await interaction.response.send_message(
+            "You do not have permission to use this command.",
+            ephemeral=True,
+        )
+        return
+
+    # Fetch the message from the SAME channel
+    try:
+        message = await interaction.channel.fetch_message(int(message_id))
+    except Exception:
+        await interaction.response.send_message(
+            "Could not find a message with that ID in this channel.",
+            ephemeral=True,
+        )
+        return
+
+    # Find the reaction
+    target_reaction = None
+    for reaction in message.reactions:
+        if str(reaction.emoji) == emoji:
+            target_reaction = reaction
+            break
+
+    if target_reaction is None:
+        await interaction.response.send_message(
+            "That reaction was not found on the message.",
+            ephemeral=True,
+        )
+        return
+
+    users = []
+    async for user in target_reaction.users():
+        if not user.bot:
+            users.append(user)
+
+    if not users:
+        await interaction.response.send_message(
+            "No users have reacted with that emoji.",
+            ephemeral=True,
+        )
+        return
+
+    mentions = " ".join(user.mention for user in users)
+
+    await interaction.response.send_message(
+        f"**Users who reacted ({len(users)}):**\n{mentions}",
+        ephemeral=True,
+    )
+
+
 # ================= RUN =================
 
 if __name__ == "__main__":
     if not DISCORD_TOKEN:
         raise RuntimeError("DISCORD_TOKEN not set")
     bot.run(DISCORD_TOKEN)
+
 
 
 

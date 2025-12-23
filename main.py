@@ -3,9 +3,7 @@ from discord import app_commands
 from discord.ext import tasks
 import aiohttp
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
 
 # ================= CONFIG =================
 
@@ -249,6 +247,7 @@ if __name__ == "__main__":
     if not DISCORD_TOKEN:
         raise RuntimeError("DISCORD_TOKEN not set")
     bot.run(DISCORD_TOKEN)
+
 
 
 

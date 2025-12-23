@@ -16,6 +16,11 @@ if not _log_channel:
 
 LOG_CHANNEL_ID = int(_log_channel)
 
+# ================= CONFIG 2 =================
+
+CHECK_INTERVAL = 20  # seconds
+API_URL = "https://api.policeroleplay.community/v1/server/players"
+
 # ================= ID CONFIG =================
 
 SSU_REQUIRED_ROLE_ID = 1054172988318158949
@@ -249,6 +254,7 @@ if __name__ == "__main__":
     if not DISCORD_TOKEN:
         raise RuntimeError("DISCORD_TOKEN not set")
     bot.run(DISCORD_TOKEN)
+
 
 
 
